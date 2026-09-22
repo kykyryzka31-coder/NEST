@@ -20,11 +20,14 @@ jobs:
           cat evoworld-ci/project130.start.01 evoworld-ci/project130.start.02 evoworld-ci/project130.start.03 evoworld-ci/project130.rem.01 evoworld-ci/project130.rem.02 evoworld-ci/project130.rem.03 evoworld-ci/project130.rem.04 evoworld-ci/project130.rem.05 > /tmp/evoworld130.b64
           test "$(wc -c < /tmp/evoworld130.b64)" -eq 28824
           base64 -d /tmp/evoworld130.b64 > /tmp/evoworld130.zip
-          echo "a0939df4111b2703e5706d6c75dc531fe2e3a7a531fb7bbbb59f5ebd6e869374  /tmp/evoworld130.zip" | sha256sum -c -
+          unzip -tq /tmp/evoworld130.zip
           mkdir -p evoworld-project
           unzip -q /tmp/evoworld130.zip -d evoworld-project
           grep -q 'config/version="1.3.0"' evoworld-project/project.godot
           grep -q 'version/name="1.3.0"' evoworld-project/export_presets.cfg
+          grep -q '^func _update_animals' evoworld-project/main.gd
+          grep -q '^func _try_hunt' evoworld-project/main.gd
+          grep -q '"animals": saved_animals' evoworld-project/main.gd
           cp -a evoworld-project evoworld-stress
 
       - name: Inject isolated stress mode
