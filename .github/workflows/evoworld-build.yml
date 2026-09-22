@@ -21,12 +21,10 @@ jobs:
           base64 -d /tmp/evoworld.b64 > /tmp/evoworld.zip
           mkdir -p evoworld-project
           unzip -q /tmp/evoworld.zip -d evoworld-project
+          cp -a evoworld-project evoworld-stress
 
-      - name: Apply production + stress patches
-        run: |
-          python3 evoworld-ci/stress_patch.py evoworld-project
-          python3 evoworld-ci/ecology_patch.py evoworld-project
-          python3 evoworld-ci/polish_patch.py evoworld-project
+      - name: Inject isolated stress mode
+        run: python3 evoworld-ci/stress_patch.py evoworld-stress
 
       - name: Pull Godot Android CI image
         run: docker pull barichello/godot-ci:4.7.2
@@ -34,51 +32,37 @@ jobs:
       - name: Headless validation
         run: |
           set -o pipefail
-          docker run --rm \
-            -v "$PWD/evoworld-project:/project" \
-            -w /project \
-            barichello/godot-ci:4.7.2 \
-            godot --headless --path /project --quit-after 30 2>&1 | tee /tmp/godot-validate.log
+          docker run --rm             -v "$PWD/evoworld-project:/project"             -w /project             barichello/godot-ci:4.7.2             godot --headless --path /project --quit-after 30 2>&1 | tee /tmp/godot-validate.log
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script" /tmp/godot-validate.log; then
             echo "Godot script validation failed"
             exit 1
           fi
 
-      - name: 100x simulation stress test
+      - name: 100x 20-year simulation stress test
         run: |
           set -o pipefail
-          timeout --kill-after=10s 180s docker run --rm \
-            -v "$PWD/evoworld-project:/project" \
-            -w /project \
-            barichello/godot-ci:4.7.2 \
-            godot --headless --path /project --fixed-fps 60 -- --ci-stress 2>&1 | tee /tmp/godot-stress.log
+          timeout --kill-after=10s 150s docker run --rm             -v "$PWD/evoworld-stress:/project"             -w /project             barichello/godot-ci:4.7.2             godot --headless --path /project --fixed-fps 60 -- --ci-stress 2>&1 | tee /tmp/godot-stress.log
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|CI stress failed|CI save/load failed" /tmp/godot-stress.log; then
             echo "Godot stress validation failed"
             exit 1
           fi
+          grep "CI_STRESS_RESULT" /tmp/godot-stress.log
 
       - name: Build Android APK
         run: |
           mkdir -p evoworld-project/build
-          docker run --rm \
-            -v "$PWD/evoworld-project:/project" \
-            -w /project \
-            barichello/godot-ci:4.7.2 \
-            godot --headless --path /project --export-debug Android /project/build/EvoWorld.apk
+          docker run --rm             -v "$PWD/evoworld-project:/project"             -w /project             barichello/godot-ci:4.7.2             godot --headless --path /project --export-debug Android /project/build/EvoWorld.apk
           test -s evoworld-project/build/EvoWorld.apk
           sha256sum evoworld-project/build/EvoWorld.apk
 
       - name: Verify Android package
         run: |
-          docker run --rm \
-            -v "$PWD/evoworld-project:/project" \
-            barichello/godot-ci:4.7.2 \
-            sh -lc '/usr/lib/android-sdk/build-tools/33.0.2/aapt dump badging /project/build/EvoWorld.apk | grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^native-code:"'
+          docker run --rm             -v "$PWD/evoworld-project:/project"             barichello/godot-ci:4.7.2             sh -lc '/usr/lib/android-sdk/build-tools/33.0.2/aapt dump badging /project/build/EvoWorld.apk | grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^native-code:"'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: EvoWorld-Android-1.2.1
+          name: EvoWorld-Android-1.2.0
           path: evoworld-project/build/EvoWorld.apk
           if-no-files-found: error
           retention-days: 7
