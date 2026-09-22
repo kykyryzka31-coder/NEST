@@ -6,6 +6,92 @@ root = Path(sys.argv[1])
 p = root / "main.gd"
 s = p.read_text(encoding="utf-8")
 
+# EvoWorld 1.2 core balance.
+def replace_once(old: str, new: str) -> None:
+    global s
+    if old in s:
+        s = s.replace(old, new, 1)
+
+replace_once("const PERCEPTION_RADIUS := 20.0", "const PERCEPTION_RADIUS := 26.0")
+replace_once("const SOCIAL_RADIUS := 8.0", "const SOCIAL_RADIUS := 10.0")
+replace_once(
+    '    for i in range(42):\n        _create_resource("food", 0.0, rng.randf_range(0.46, 0.68))',
+    '    for i in range(60):\n        _create_resource("food", 0.0, rng.randf_range(0.46, 0.68))',
+)
+replace_once(
+    '    for i in range(14):\n        _create_resource("water", 0.0, 0.9)',
+    '    for i in range(20):\n        _create_resource("water", 0.0, 0.9)',
+)
+replace_once(
+"""    if speed > 0.0:
+        var remaining: float = delta * speed
+        while remaining > 0.00001:
+            var step: float = minf(0.15, remaining)
+            sim_time += step
+            _simulate_step(step)
+            remaining -= step
+""",
+"""    if speed > 0.0:
+        var remaining: float = delta * speed
+        var max_step: float = 0.15
+        if speed >= 50.0:
+            max_step = 0.85
+        elif speed >= 20.0:
+            max_step = 0.45
+        elif speed >= 5.0:
+            max_step = 0.25
+        while remaining > 0.00001:
+            var step: float = minf(max_step, remaining)
+            sim_time += step
+            _simulate_step(step)
+            remaining -= step
+""",
+)
+replace_once(
+"""    a["age"] = float(a["age"]) + dt / YEAR_SECONDS
+    a["hunger"] = clampf(float(a["hunger"]) + dt * 0.00255 * metabolism, 0.0, 1.0)
+    a["thirst"] = clampf(float(a["thirst"]) + dt * 0.00385 * metabolism, 0.0, 1.0)
+    a["fatigue"] = clampf(float(a["fatigue"]) + dt * 0.0016, 0.0, 1.0)
+""",
+"""    a["age"] = float(a["age"]) + dt / YEAR_SECONDS
+    var age_factor = 0.72 if float(a["age"]) < 14.0 else 1.0
+    var culture_factor = 0.92 if int(a["culture_id"]) >= 0 else 1.0
+    var storage_factor = 0.88 if a["techniques"].has("storage") else 1.0
+    a["hunger"] = clampf(float(a["hunger"]) + dt * 0.00185 * metabolism * age_factor * culture_factor * storage_factor, 0.0, 1.0)
+    a["thirst"] = clampf(float(a["thirst"]) + dt * 0.00265 * metabolism * age_factor, 0.0, 1.0)
+    a["fatigue"] = clampf(float(a["fatigue"]) + dt * 0.00135, 0.0, 1.0)
+""",
+)
+replace_once(
+"""    if float(a["hunger"]) > 0.96:
+        a["health"] = float(a["health"]) - dt * 0.0029
+    if float(a["thirst"]) > 0.96:
+        a["health"] = float(a["health"]) - dt * 0.0055
+    if float(a["cold_stress"]) > 0.62:
+        a["health"] = float(a["health"]) - dt * 0.0017 * float(a["cold_stress"])
+""",
+"""    if float(a["hunger"]) > 0.985:
+        a["health"] = float(a["health"]) - dt * 0.0018
+    if float(a["thirst"]) > 0.985:
+        a["health"] = float(a["health"]) - dt * 0.0032
+    if float(a["cold_stress"]) > 0.78:
+        a["health"] = float(a["health"]) - dt * 0.0010 * float(a["cold_stress"])
+""",
+)
+replace_once(
+    '        r["respawn_at"] = sim_time + (32.0 if kind in ["food", "water"] else 110.0)',
+    '        r["respawn_at"] = sim_time + (18.0 if kind == "food" else (10.0 if kind == "water" else 110.0))',
+)
+replace_once('    if sim_time - float(a["last_birth"]) < YEAR_SECONDS * 1.8:', '    if sim_time - float(a["last_birth"]) < YEAR_SECONDS * 1.25:')
+replace_once(
+    '    if float(a["health"]) < 0.70 or float(a["hunger"]) > 0.68 or float(a["thirst"]) > 0.68:',
+    '    if float(a["health"]) < 0.60 or float(a["hunger"]) > 0.78 or float(a["thirst"]) > 0.78:',
+)
+replace_once(
+    '    var chance = (0.08 + fertility * 0.16 + social * 0.06) * crowd_factor',
+    '    var chance = (0.14 + fertility * 0.22 + social * 0.08) * crowd_factor',
+)
+
 new_func = r'''func _update_cultures() -> void:
     if agents.size() < 5:
         return
