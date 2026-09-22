@@ -398,6 +398,25 @@ replace_once(
 '''
 )
 
+
+# Extend CI assertions to cover the ecosystem too (only active in --ci-stress).
+s = s.replace(
+    "        var before_save_population = agents.size()\n        _save_world(true)\n        _load_world()\n        print(\"CI_SAVELOAD population_before=\", before_save_population, \" population_after=\", agents.size(), \" year=\", sim_time / YEAR_SECONDS)",
+    "        var before_save_population = agents.size()\n        var before_save_animals = animals.size()\n        _save_world(true)\n        _load_world()\n        print(\"CI_SAVELOAD population_before=\", before_save_population, \" population_after=\", agents.size(), \" animals_before=\", before_save_animals, \" animals_after=\", animals.size(), \" year=\", sim_time / YEAR_SECONDS)"
+)
+s = s.replace(
+    '        if agents.is_empty():\n            push_error("CI save/load failed: population vanished")',
+    '        if agents.is_empty() or animals.is_empty():\n            push_error("CI save/load failed: population or wildlife vanished")'
+)
+s = s.replace(
+    'print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts, " climate_events=3")',
+    'print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts, " animals=", animals.size(), " animal_births=", animal_births, " animal_deaths=", animal_deaths, " climate_events=3")'
+)
+s = s.replace(
+    '        if agents.size() < 8 or births < 6 or max_generation < 2:',
+    '        if agents.size() < 8 or births < 6 or max_generation < 2 or animals.size() < 6 or animal_births < 2:'
+)
+
 p.write_text(s, encoding="utf-8")
 
 project = root / "project.godot"
