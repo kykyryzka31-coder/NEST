@@ -38,6 +38,10 @@ replace_once(
     '    _spawn_initial_population()\n    _spawn_wildlife_decor()\n',
     '    _spawn_initial_population()\n    _spawn_wildlife_decor()\n    _spawn_initial_animals()\n'
 )
+replace_once(
+    '    for i in range(8):\n        _create_resource("ore", 0.0, 0.52)\n',
+    '    for i in range(8):\n        _create_resource("ore", 0.0, 0.52)\n    for i in range(68):\n        _create_resource("grass", 0.0, rng.randf_range(0.28, 0.42))\n'
+)
 
 replace_once(
     '        "target_rid": -1,\n        "next_think":',
@@ -79,10 +83,14 @@ replace_once(
 
 animal_funcs = r'''
 func _spawn_initial_animals() -> void:
-    for i in range(38):
-        _spawn_animal("grazer", Vector3(rng.randf_range(-WORLD_HALF + 4.0, WORLD_HALF - 4.0), 0.0, rng.randf_range(-WORLD_HALF + 4.0, WORLD_HALF - 4.0)))
-    for i in range(8):
-        _spawn_animal("predator", Vector3(rng.randf_range(-WORLD_HALF + 6.0, WORLD_HALF - 6.0), 0.0, rng.randf_range(-WORLD_HALF + 6.0, WORLD_HALF - 6.0)))
+    var herd_centers = [Vector3(-24.0, 0.0, -20.0), Vector3(23.0, 0.0, -18.0), Vector3(-20.0, 0.0, 23.0), Vector3(22.0, 0.0, 22.0)]
+    for herd in herd_centers:
+        for i in range(11):
+            _spawn_animal("grazer", _clamp_world(herd + Vector3(rng.randf_range(-6.0, 6.0), 0.0, rng.randf_range(-6.0, 6.0))))
+    var pack_centers = [Vector3(-5.0, 0.0, -28.0), Vector3(7.0, 0.0, 28.0)]
+    for pack in pack_centers:
+        for i in range(2):
+            _spawn_animal("predator", _clamp_world(pack + Vector3(rng.randf_range(-4.0, 4.0), 0.0, rng.randf_range(-4.0, 4.0))))
 
 func _spawn_animal(species: String, pos: Vector3, starting_age: float = -1.0, sex_override: String = "") -> Dictionary:
     var root = Node3D.new()
@@ -114,7 +122,7 @@ func _spawn_animal(species: String, pos: Vector3, starting_age: float = -1.0, se
     head.material_override = head_mat
 
     var sex = sex_override if sex_override != "" else ("F" if rng.randf() < 0.5 else "M")
-    var age = starting_age if starting_age >= 0.0 else rng.randf_range(1.0, 7.0)
+    var age = starting_age if starting_age >= 0.0 else rng.randf_range(0.5, 4.5)
     var animal = {
         "aid": next_animal_id,
         "species": species,
@@ -122,7 +130,7 @@ func _spawn_animal(species: String, pos: Vector3, starting_age: float = -1.0, se
         "health": 1.0,
         "hunger": rng.randf_range(0.0, 0.42),
         "age": age,
-        "lifespan": rng.randf_range(10.0, 16.0) if species == "grazer" else rng.randf_range(12.0, 19.0),
+        "lifespan": rng.randf_range(14.0, 21.0) if species == "grazer" else rng.randf_range(16.0, 24.0),
         "sex": sex,
         "fertility": rng.randf_range(0.35, 0.95),
         "speed": rng.randf_range(1.8, 2.5) if species == "grazer" else rng.randf_range(2.1, 2.9),
@@ -141,7 +149,7 @@ func _simulate_animals(dt: float, temperature: float) -> void:
     for i in range(animals.size() - 1, -1, -1):
         var animal: Dictionary = animals[i]
         animal["age"] = float(animal["age"]) + dt / YEAR_SECONDS
-        var hunger_rate = 0.00145 if String(animal["species"]) == "grazer" else 0.00115
+        var hunger_rate = 0.00105 if String(animal["species"]) == "grazer" else 0.00085
         animal["hunger"] = clampf(float(animal["hunger"]) + dt * hunger_rate, 0.0, 1.0)
         if float(animal["hunger"]) > 0.97:
             animal["health"] = float(animal["health"]) - dt * 0.0030
@@ -169,12 +177,12 @@ func _animal_think(animal: Dictionary) -> void:
     animal["target_aid"] = -1
     var species = String(animal["species"])
     if species == "grazer" and float(animal["hunger"]) > 0.28:
-        var food = _nearest_resource_to_position((animal["root"] as Node3D).position, "food", 24.0)
+        var food = _nearest_resource_to_position((animal["root"] as Node3D).position, "grass", 28.0)
         if food != null:
             animal["target_rid"] = int(food["rid"])
             animal["target"] = (food["node"] as Node3D).position
             return
-    elif species == "predator" and float(animal["hunger"]) > 0.24:
+    elif species == "predator" and float(animal["hunger"]) > 0.52:
         var prey = _nearest_grazer_to_position((animal["root"] as Node3D).position, 30.0)
         if prey != null:
             animal["target_aid"] = int(prey["aid"])
@@ -204,13 +212,13 @@ func _animal_interact(animal: Dictionary) -> void:
         var idx = _resource_index_by_id(int(animal["target_rid"]))
         if idx >= 0:
             var r: Dictionary = resources[idx]
-            if String(r["kind"]) == "food" and float(r["amount"]) > 0.05 and root.position.distance_to((r["node"] as Node3D).position) <= 1.05:
+            if String(r["kind"]) == "grass" and float(r["amount"]) > 0.05 and root.position.distance_to((r["node"] as Node3D).position) <= 1.05:
                 var taken = minf(0.11, float(r["amount"]))
                 r["amount"] = float(r["amount"]) - taken
                 animal["hunger"] = maxf(0.0, float(animal["hunger"]) - taken * 1.6)
                 if float(r["amount"]) <= 0.05:
                     r["amount"] = 0.0
-                    r["respawn_at"] = sim_time + 24.0
+                    r["respawn_at"] = sim_time + 17.0
                     (r["node"] as Node3D).visible = false
                 resources[idx] = r
                 animal["target_rid"] = -1
@@ -232,7 +240,7 @@ func _animal_try_reproduce(animal: Dictionary) -> void:
     var adult_age = 1.8 if species == "grazer" else 2.6
     if float(animal["age"]) < adult_age or float(animal["health"]) < 0.72 or float(animal["hunger"]) > 0.66:
         return
-    var cooldown = YEAR_SECONDS * (0.70 if species == "grazer" else 1.20)
+    var cooldown = YEAR_SECONDS * (0.55 if species == "grazer" else 1.10)
     if sim_time - float(animal["last_birth"]) < cooldown:
         return
     var root = animal["root"] as Node3D
@@ -242,13 +250,18 @@ func _animal_try_reproduce(animal: Dictionary) -> void:
             continue
         if float(other["age"]) < adult_age or float(other["health"]) < 0.65:
             continue
-        if root.position.distance_to((other["root"] as Node3D).position) <= 7.0:
+        if root.position.distance_to((other["root"] as Node3D).position) <= 12.0:
             mate_found = true
             break
     if not mate_found:
         return
     var density_factor = clampf(1.0 - float(animals.size()) / float(MAX_ANIMALS), 0.08, 1.0)
-    var chance = (0.08 + float(animal["fertility"]) * 0.11) * density_factor
+    if species == "predator":
+        var grazers = _animal_species_count("grazer")
+        var predators = _animal_species_count("predator")
+        if predators * 6 >= maxi(grazers, 1):
+            return
+    var chance = (0.12 + float(animal["fertility"]) * 0.16) * density_factor
     if rng.randf() > chance:
         return
     animal["last_birth"] = sim_time
@@ -260,6 +273,13 @@ func _kill_animal(index: int, animal: Dictionary) -> void:
         (animal["root"] as Node).queue_free()
     animals.remove_at(index)
     animal_deaths += 1
+
+func _animal_species_count(species: String) -> int:
+    var count = 0
+    for animal in animals:
+        if String(animal["species"]) == species and float(animal["health"]) > 0.0:
+            count += 1
+    return count
 
 func _animal_by_id(aid: int) -> Variant:
     for animal in animals:
@@ -410,11 +430,11 @@ s = s.replace(
 )
 s = s.replace(
     'print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts, " climate_events=3")',
-    'print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts, " animals=", animals.size(), " animal_births=", animal_births, " animal_deaths=", animal_deaths, " climate_events=3")'
+    'print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts, " animals=", animals.size(), " grazers=", _animal_species_count("grazer"), " predators=", _animal_species_count("predator"), " animal_births=", animal_births, " animal_deaths=", animal_deaths, " climate_events=3")'
 )
 s = s.replace(
     '        if agents.size() < 8 or births < 6 or max_generation < 2:',
-    '        if agents.size() < 8 or births < 6 or max_generation < 2 or animals.size() < 6 or animal_births < 2:'
+    '        if agents.size() < 8 or births < 6 or max_generation < 2 or animals.size() < 10 or _animal_species_count("grazer") < 8 or animal_births < 4:'
 )
 
 p.write_text(s, encoding="utf-8")
