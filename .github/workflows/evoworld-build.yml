@@ -50,7 +50,7 @@ jobs:
             -v "$PWD/evoworld-stress:/project" \
             -w /project \
             barichello/godot-ci:4.7.2 \
-            godot --headless --path /project --fixed-fps 60 -- --ci-stress 2>&1 | tee /tmp/godot-stress.log
+            godot --headless --path /project --fixed-fps 10 -- --ci-stress 2>&1 | tee /tmp/godot-stress.log
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|CI stress failed|CI save/load failed" /tmp/godot-stress.log; then
             echo "Godot stress validation failed"
             exit 1
