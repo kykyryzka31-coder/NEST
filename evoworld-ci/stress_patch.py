@@ -8,7 +8,7 @@ s = p.read_text(encoding="utf-8")
 # CI-only state.
 s = s.replace(
     "var next_resource_update = 0.0\n",
-    "var next_resource_update = 0.0\nvar ci_stress = false\nvar ci_stress_target = 0.0\nvar ci_save_done = false\n",
+    "var next_resource_update = 0.0\nvar ci_stress = false\nvar ci_stress_target = 0.0\nvar ci_save_done = false\nvar ci_cold_done = false\nvar ci_heat_done = false\nvar ci_lightning_done = false\n",
 )
 
 # Start a deterministic 100x world when CI asks for it.
