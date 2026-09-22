@@ -3,7 +3,7 @@ name: EvoWorld Android Build
 on:
   push:
     branches:
-      - evoworld-build-20260921
+      - evoworld-build-20260922
   workflow_dispatch:
 
 jobs:
