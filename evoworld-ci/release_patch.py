@@ -92,6 +92,114 @@ replace_once(
     '    var chance = (0.14 + fertility * 0.22 + social * 0.08) * crowd_factor',
 )
 
+# EvoWorld 1.2 family cohesion and culture-centered movement.
+replace_once(
+"""    var hunt_score = 0.0
+    if a["techniques"].has("spear") or a["techniques"].has("bow"):
+        hunt_score = float(a["hunger"]) * 0.58 + float(a["aggression"]) * 0.16
+""",
+"""    var hunt_score = 0.0
+    if a["techniques"].has("spear") or a["techniques"].has("bow"):
+        hunt_score = float(a["hunger"]) * 0.58 + float(a["aggression"]) * 0.16
+    var family_score = 0.0
+    if float(a["age"]) < 12.0 and float(a["hunger"]) < 0.72 and float(a["thirst"]) < 0.72:
+        family_score = 0.70 + float(a["sociability"]) * 0.18
+""",
+)
+replace_once(
+"""    if hunt_score > best:
+        action = "Охотится"
+""",
+"""    if hunt_score > best:
+        best = hunt_score
+        action = "Охотится"
+    if family_score > best:
+        action = "Следует за семьёй"
+""",
+)
+replace_once(
+"""    elif action == "Экспериментирует":
+        var material = _nearest_material(a)
+        a["target"] = (material["node"] as Node3D).position if material != null else _random_near(a, 9.0)
+    else:
+        a["target"] = _random_near(a, 12.0)
+""",
+"""    elif action == "Экспериментирует":
+        var material = _nearest_material(a)
+        a["target"] = (material["node"] as Node3D).position if material != null else _random_near(a, 9.0)
+    elif action == "Следует за семьёй":
+        var parent: Variant = _agent_by_id(int(a["mother_id"]))
+        if parent == null:
+            parent = _agent_by_id(int(a["father_id"]))
+        a["target"] = (parent["root"] as Node3D).position if parent != null else _random_near(a, 7.0)
+    else:
+        var culture: Variant = _culture_by_id(int(a["culture_id"]))
+        if culture != null and rng.randf() < 0.62:
+            var center: Vector3 = culture["center"]
+            a["target"] = _clamp_world(center + Vector3(rng.randf_range(-9.0, 9.0), 0.0, rng.randf_range(-9.0, 9.0)))
+        else:
+            a["target"] = _random_near(a, 12.0)
+""",
+)
+
+# Explicit nullable return types for Godot 4.7.
+for old, new in {
+    "func _best_matching_culture(center: Vector3, dialect: float):": "func _best_matching_culture(center: Vector3, dialect: float) -> Variant:",
+    "func _culture_by_id(culture_id: int):": "func _culture_by_id(culture_id: int) -> Variant:",
+    "func _structure_by_id(sid: int):": "func _structure_by_id(sid: int) -> Variant:",
+    "func _agent_by_id(agent_id: int):": "func _agent_by_id(agent_id: int) -> Variant:",
+    "func _nearest_agent(a: Dictionary, radius: float):": "func _nearest_agent(a: Dictionary, radius: float) -> Variant:",
+    "func _nearest_material(a: Dictionary):": "func _nearest_material(a: Dictionary) -> Variant:",
+}.items():
+    s = s.replace(old, new)
+s = s.replace("    var best = null\n", "    var best: Variant = null\n")
+
+# Farming and irrigation create a real local food surplus.
+replace_once("        var farming_count = 0\n        var masonry_count = 0", "        var farming_count = 0\n        var irrigation_count = 0\n        var masonry_count = 0")
+replace_once(
+"""            if a["techniques"].has("farming"):
+                farming_count += 1
+            if a["techniques"].has("masonry"):
+""",
+"""            if a["techniques"].has("farming"):
+                farming_count += 1
+            if a["techniques"].has("irrigation"):
+                irrigation_count += 1
+            if a["techniques"].has("masonry"):
+""",
+)
+replace_once(
+"""                _upgrade_settlement(settlement, culture, farming_count, masonry_count)
+
+func _create_settlement(culture: Dictionary, has_fire: bool) -> Dictionary:
+""",
+"""                _upgrade_settlement(settlement, culture, farming_count, masonry_count)
+                _support_settlement_food(settlement, farming_count, irrigation_count)
+
+func _support_settlement_food(settlement: Dictionary, farming_count: int, irrigation_count: int) -> void:
+    if farming_count < 2:
+        return
+    var center = (settlement["node"] as Node3D).position
+    var nearby_food = 0
+    var target_food = 6 + mini(4, irrigation_count)
+    for i in range(resources.size()):
+        var r: Dictionary = resources[i]
+        if String(r["kind"]) != "food":
+            continue
+        if center.distance_to((r["node"] as Node3D).position) > 12.0:
+            continue
+        nearby_food += 1
+        if float(r["amount"]) <= 0.05:
+            r["respawn_at"] = minf(float(r["respawn_at"]), sim_time + (6.0 if irrigation_count > 0 else 10.0)) if float(r["respawn_at"]) >= 0.0 else sim_time + 10.0
+            resources[i] = r
+    while nearby_food < target_food and resources.size() < 220:
+        _create_resource("food", 0.0, rng.randf_range(0.48, 0.66), _clamp_world(center + Vector3(rng.randf_range(-10.0, 10.0), 0.0, rng.randf_range(-10.0, 10.0))))
+        nearby_food += 1
+
+func _create_settlement(culture: Dictionary, has_fire: bool) -> Dictionary:
+""",
+)
+
 new_func = r'''func _update_cultures() -> void:
     if agents.size() < 5:
         return
