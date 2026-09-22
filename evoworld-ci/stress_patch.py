@@ -112,6 +112,19 @@ s = s.replace(
     '    cold_snap_until = float(data.get("cold_snap_until", -1.0))\n    heat_wave_until = float(data.get("heat_wave_until", -1.0))\n    lightning_bonus_until = float(data.get("lightning_bonus_until", -1.0))\n    var lightning_raw: Array = data.get("lightning_position", [0.0, 0.0, 0.0])\n    lightning_position = Vector3(float(lightning_raw[0]), float(lightning_raw[1]), float(lightning_raw[2]))\n    global_discoveries = data.get("global_discoveries", {})',
 )
 
+
+# Godot 4.7 strict inference: nullable Dictionary helpers must return Variant.
+for old, new in {
+    "func _best_matching_culture(center: Vector3, dialect: float):": "func _best_matching_culture(center: Vector3, dialect: float) -> Variant:",
+    "func _culture_by_id(culture_id: int):": "func _culture_by_id(culture_id: int) -> Variant:",
+    "func _structure_by_id(sid: int):": "func _structure_by_id(sid: int) -> Variant:",
+    "func _agent_by_id(agent_id: int):": "func _agent_by_id(agent_id: int) -> Variant:",
+    "func _nearest_agent(a: Dictionary, radius: float):": "func _nearest_agent(a: Dictionary, radius: float) -> Variant:",
+    "func _nearest_material(a: Dictionary):": "func _nearest_material(a: Dictionary) -> Variant:",
+}.items():
+    s = s.replace(old, new)
+s = s.replace("    var best = null\n", "    var best: Variant = null\n")
+
 p.write_text(s, encoding="utf-8")
 
 # Final Android build version.
