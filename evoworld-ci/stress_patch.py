@@ -59,6 +59,14 @@ s = s.replace(
 s = s.replace(
     "    _refresh_ui()\n\nfunc _simulate_step(dt: float) -> void:\n",
     """    _refresh_ui()
+    if ci_stress and not ci_cold_done and sim_time >= YEAR_SECONDS * 5.0:
+        ci_cold_done = true
+        _god_cold_snap()
+        print("CI_EVENT cold_snap year=", sim_time / YEAR_SECONDS, " population=", agents.size())
+    if ci_stress and not ci_heat_done and sim_time >= YEAR_SECONDS * 9.0:
+        ci_heat_done = true
+        _god_heat_wave()
+        print("CI_EVENT heat_wave year=", sim_time / YEAR_SECONDS, " population=", agents.size())
     if ci_stress and not ci_save_done and sim_time >= YEAR_SECONDS * 12.5:
         ci_save_done = true
         var before_save_population = agents.size()
@@ -68,8 +76,12 @@ s = s.replace(
         if agents.is_empty():
             push_error("CI save/load failed: population vanished")
             get_tree().quit(3)
+    if ci_stress and not ci_lightning_done and sim_time >= YEAR_SECONDS * 16.0:
+        ci_lightning_done = true
+        _god_lightning()
+        print("CI_EVENT lightning year=", sim_time / YEAR_SECONDS, " population=", agents.size())
     if ci_stress and sim_time >= ci_stress_target:
-        print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts)
+        print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts, " climate_events=3")
         if agents.size() < 8 or births < 6 or max_generation < 2:
             push_error("CI stress failed: population did not sustain and reproduce")
             get_tree().quit(2)
