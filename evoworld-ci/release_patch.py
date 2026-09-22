@@ -200,6 +200,54 @@ func _create_settlement(culture: Dictionary, has_fire: bool) -> Dictionary:
 """,
 )
 
+# EvoWorld 1.2 persistence fixes.
+deserialize_memory = """func _deserialize_memory(raw: Dictionary) -> Dictionary:
+    var out = {}
+    for key in raw.keys():
+        var k: Dictionary = raw[key]
+        var p: Array = k["pos"]
+        out[int(key)] = {
+            "kind": k["kind"], "pos": Vector3(float(p[0]), float(p[1]), float(p[2])),
+            "value": float(k["value"]), "danger": float(k["danger"]), "confidence": float(k["confidence"])
+        }
+    return out
+"""
+if "func _deserialize_trust" not in s:
+    replace_once(
+        deserialize_memory,
+        deserialize_memory + """
+func _deserialize_trust(raw: Dictionary) -> Dictionary:
+    var out = {}
+    for key in raw.keys():
+        out[int(key)] = float(raw[key])
+    return out
+""",
+    )
+
+replace_once(
+"""        "cold_snap_until": cold_snap_until, "heat_wave_until": heat_wave_until,
+        "global_discoveries": global_discoveries, "relations": relations, "history": history,
+""",
+"""        "cold_snap_until": cold_snap_until, "heat_wave_until": heat_wave_until,
+        "lightning_bonus_until": lightning_bonus_until, "lightning_position": [lightning_position.x, lightning_position.y, lightning_position.z],
+        "global_discoveries": global_discoveries, "relations": relations, "history": history,
+""",
+)
+replace_once(
+"""    cold_snap_until = float(data.get("cold_snap_until", -1.0))
+    heat_wave_until = float(data.get("heat_wave_until", -1.0))
+    global_discoveries = data.get("global_discoveries", {})
+""",
+"""    cold_snap_until = float(data.get("cold_snap_until", -1.0))
+    heat_wave_until = float(data.get("heat_wave_until", -1.0))
+    lightning_bonus_until = float(data.get("lightning_bonus_until", -1.0))
+    var lightning_raw: Array = data.get("lightning_position", [0.0, 0.0, 0.0])
+    lightning_position = Vector3(float(lightning_raw[0]), float(lightning_raw[1]), float(lightning_raw[2]))
+    global_discoveries = data.get("global_discoveries", {})
+""",
+)
+s = s.replace('agent["trust"] = raw.get("trust", {})', 'agent["trust"] = _deserialize_trust(raw.get("trust", {}))')
+
 new_func = r'''func _update_cultures() -> void:
     if agents.size() < 5:
         return
