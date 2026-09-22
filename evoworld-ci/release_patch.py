@@ -93,7 +93,8 @@ replace_once(
 )
 
 # EvoWorld 1.2 family cohesion and culture-centered movement.
-replace_once(
+if 'var family_score = 0.0' not in s:
+    replace_once(
 """    var hunt_score = 0.0
     if a["techniques"].has("spear") or a["techniques"].has("bow"):
         hunt_score = float(a["hunger"]) * 0.58 + float(a["aggression"]) * 0.16
@@ -155,8 +156,9 @@ for old, new in {
 s = s.replace("    var best = null\n", "    var best: Variant = null\n")
 
 # Farming and irrigation create a real local food surplus.
-replace_once("        var farming_count = 0\n        var masonry_count = 0", "        var farming_count = 0\n        var irrigation_count = 0\n        var masonry_count = 0")
-replace_once(
+if 'func _support_settlement_food' not in s:
+    replace_once("        var farming_count = 0\n        var masonry_count = 0", "        var farming_count = 0\n        var irrigation_count = 0\n        var masonry_count = 0")
+    replace_once(
 """            if a["techniques"].has("farming"):
                 farming_count += 1
             if a["techniques"].has("masonry"):
@@ -168,7 +170,7 @@ replace_once(
             if a["techniques"].has("masonry"):
 """,
 )
-replace_once(
+    replace_once(
 """                _upgrade_settlement(settlement, culture, farming_count, masonry_count)
 
 func _create_settlement(culture: Dictionary, has_fire: bool) -> Dictionary:
