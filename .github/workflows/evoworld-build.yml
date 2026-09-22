@@ -22,8 +22,10 @@ jobs:
           mkdir -p evoworld-project
           unzip -q /tmp/evoworld.zip -d evoworld-project
 
-      - name: Inject stress mode
-        run: python3 evoworld-ci/stress_patch.py evoworld-project
+      - name: Apply production + stress patches
+        run: |
+          python3 evoworld-ci/stress_patch.py evoworld-project
+          python3 evoworld-ci/ecology_patch.py evoworld-project
 
       - name: Pull Godot Android CI image
         run: docker pull barichello/godot-ci:4.7.2
@@ -75,7 +77,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: EvoWorld-Android-1.1.1-Final
+          name: EvoWorld-Android-1.2.0-Ecology
           path: evoworld-project/build/EvoWorld.apk
           if-no-files-found: error
           retention-days: 7
