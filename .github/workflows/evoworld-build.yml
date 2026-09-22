@@ -23,7 +23,7 @@ jobs:
           unzip -q /tmp/evoworld.zip -d evoworld-project
 
       - name: Inject stress mode
-        run: python3 evoworld-ci/stress_patch.py evoworld-project/main.gd
+        run: python3 evoworld-ci/stress_patch.py evoworld-project
 
       - name: Pull Godot Android CI image
         run: docker pull barichello/godot-ci:4.7.2
@@ -38,7 +38,7 @@ jobs:
 
       - name: 100x simulation stress test
         run: |
-          timeout 180s docker run --rm \
+          timeout --kill-after=10s 180s docker run --rm \
             -v "$PWD/evoworld-project:/project" \
             -w /project \
             barichello/godot-ci:4.7.2 \
@@ -65,7 +65,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: EvoWorld-Android-1.1.1
+          name: EvoWorld-Android-1.1.1-Final
           path: evoworld-project/build/EvoWorld.apk
           if-no-files-found: error
           retention-days: 7
