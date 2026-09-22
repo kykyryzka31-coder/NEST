@@ -35,17 +35,20 @@ s = s.replace(
         ci_save_done = true
         var before_population = agents.size()
         var before_births = births
+        var before_animals = animals.size()
+        var before_animal_births = animal_births
+        var before_animal_deaths = animal_deaths
         _save_world(true)
         _load_world()
         auto_slow = false
         _set_speed(100.0)
-        print("CI_SAVELOAD population_before=", before_population, " population_after=", agents.size(), " births_before=", before_births, " births_after=", births, " year=", sim_time / YEAR_SECONDS)
-        if agents.size() != before_population or births != before_births:
+        print("CI_SAVELOAD population_before=", before_population, " population_after=", agents.size(), " births_before=", before_births, " births_after=", births, " animals_before=", before_animals, " animals_after=", animals.size(), " animal_births_before=", before_animal_births, " animal_births_after=", animal_births, " year=", sim_time / YEAR_SECONDS)
+        if agents.size() != before_population or births != before_births or animals.size() != before_animals or animal_births != before_animal_births or animal_deaths != before_animal_deaths:
             push_error("CI save/load failed: world state changed")
             get_tree().quit(3)
     if ci_stress and sim_time >= ci_stress_target:
-        print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts)
-        if agents.size() < 10 or births < 8 or max_generation < 2:
+        print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts, " animals=", animals.size(), " animal_births=", animal_births, " animal_deaths=", animal_deaths, " hunting=", global_discoveries.has("hunting"))
+        if agents.size() < 10 or births < 8 or max_generation < 2 or animals.is_empty():
             push_error("CI stress failed: population did not sustain generations")
             get_tree().quit(2)
         else:
