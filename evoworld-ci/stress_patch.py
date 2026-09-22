@@ -17,10 +17,14 @@ s = s.replace(
     if "--ci-stress" in OS.get_cmdline_user_args():
         ci_stress = true
         ci_stress_target = YEAR_SECONDS * 20.0
-        _start_world(12345)
+        var ci_seed = 12345
+        for arg in OS.get_cmdline_user_args():
+            if arg.begins_with("--ci-seed="):
+                ci_seed = int(arg.get_slice("=", 1))
+        _start_world(ci_seed)
         auto_slow = false
         _set_speed(100.0)
-        print("CI_STRESS_START population=", agents.size(), " target_years=20")
+        print("CI_STRESS_START seed=", ci_seed, " population=", agents.size(), " target_years=20")
 """,
 )
 
