@@ -1,0 +1,50 @@
+name: EvoWorld Android Build
+
+on:
+  push:
+    branches:
+      - evoworld-build-20260921
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout build branch
+        uses: actions/checkout@v4
+
+      - name: Restore EvoWorld project
+        shell: bash
+        run: |
+          cat evoworld-ci/project.b64.01 evoworld-ci/project.b64.02 evoworld-ci/project.b64.03 evoworld-ci/project.b64.04 evoworld-ci/project.b64.05 > /tmp/evoworld.b64
+          base64 -d /tmp/evoworld.b64 > /tmp/evoworld.zip
+          mkdir -p evoworld-project
+          unzip -q /tmp/evoworld.zip -d evoworld-project
+          ls -la evoworld-project
+
+      - name: Pull Godot Android CI image
+        run: docker pull barichello/godot-ci:4.7.2
+
+      - name: Headless validation
+        run: |
+          docker run --rm             -v "$PWD/evoworld-project:/project"             -w /project             barichello/godot-ci:4.7.2             godot --headless --path /project --quit-after 30
+
+      - name: Build Android APK
+        run: |
+          mkdir -p evoworld-project/build
+          docker run --rm             -v "$PWD/evoworld-project:/project"             -w /project             barichello/godot-ci:4.7.2             godot --headless --path /project --export-debug Android /project/build/EvoWorld.apk
+          test -s evoworld-project/build/EvoWorld.apk
+          sha256sum evoworld-project/build/EvoWorld.apk
+
+      - name: Verify Android package
+        run: |
+          docker run --rm             -v "$PWD/evoworld-project:/project"             barichello/godot-ci:4.7.2             sh -lc '/usr/lib/android-sdk/build-tools/33.0.2/aapt dump badging /project/build/EvoWorld.apk | grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^native-code:"'
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EvoWorld-Android-1.1.0
+          path: evoworld-project/build/EvoWorld.apk
+          if-no-files-found: error
+          retention-days: 7
