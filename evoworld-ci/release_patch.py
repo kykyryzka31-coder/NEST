@@ -341,9 +341,16 @@ if n != 1:
 p.write_text(s, encoding="utf-8")
 
 project = root / "project.godot"
-ps = project.read_text(encoding="utf-8").replace('config/version="1.2.0"', 'config/version="1.2.1"')
+ps = project.read_text(encoding="utf-8")
+ps = re.sub(r'config/version="[^"]+"', 'config/version="1.2.1"', ps)
+if 'config/icon=' not in ps:
+    ps = ps.replace('config/version="1.2.1"\n', 'config/version="1.2.1"\nconfig/icon="res://icon.svg"\n')
 project.write_text(ps, encoding="utf-8")
 
+(root / "icon.svg").write_text("""<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="104" fill="#0b1518"/><circle cx="256" cy="262" r="174" fill="#255d46"/><path d="M120 292C170 184 232 142 292 160c40 12 76 48 100 99-44-18-83-14-116 11 49 4 85 27 112 69-55-24-107-29-153-13-43 15-82 3-115-34z" fill="#8fd3a9"/><path d="M231 297l35-87 35 87-35 61z" fill="#f19b4b"/><circle cx="266" cy="200" r="18" fill="#ffd166"/></svg>""", encoding="utf-8")
+
 preset = root / "export_presets.cfg"
-es = preset.read_text(encoding="utf-8").replace("version/code=5", "version/code=6").replace('version/name="1.2.0"', 'version/name="1.2.1"')
+es = preset.read_text(encoding="utf-8")
+es = re.sub(r'version/code=\d+', 'version/code=6', es)
+es = re.sub(r'version/name="[^"]+"', 'version/name="1.2.1"', es)
 preset.write_text(es, encoding="utf-8")
