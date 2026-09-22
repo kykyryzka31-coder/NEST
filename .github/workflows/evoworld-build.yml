@@ -43,19 +43,22 @@ jobs:
             exit 1
           fi
 
-      - name: 100x 20-year simulation stress test
+      - name: 100x multi-seed 20-year simulation stress test
         run: |
-          set -o pipefail
-          timeout --kill-after=10s 150s docker run --rm \
-            -v "$PWD/evoworld-stress:/project" \
-            -w /project \
-            barichello/godot-ci:4.7.2 \
-            godot --headless --path /project --fixed-fps 10 -- --ci-stress 2>&1 | tee /tmp/godot-stress.log
-          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|CI stress failed|CI save/load failed" /tmp/godot-stress.log; then
-            echo "Godot stress validation failed"
-            exit 1
-          fi
-          grep "CI_STRESS_RESULT" /tmp/godot-stress.log
+          set -euo pipefail
+          for seed in 12345 777 20260922; do
+            echo "=== EvoWorld stress seed $seed ==="
+            timeout --kill-after=10s 120s docker run --rm \
+              -v "$PWD/evoworld-stress:/project" \
+              -w /project \
+              barichello/godot-ci:4.7.2 \
+              godot --headless --path /project --fixed-fps 10 -- --ci-stress --ci-seed=$seed 2>&1 | tee /tmp/godot-stress-$seed.log
+            if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|CI stress failed|CI save/load failed" /tmp/godot-stress-$seed.log; then
+              echo "Godot stress validation failed for seed $seed"
+              exit 1
+            fi
+            grep "CI_STRESS_RESULT" /tmp/godot-stress-$seed.log
+          done
 
       - name: Build Android APK
         run: |
