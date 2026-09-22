@@ -21,45 +21,20 @@ jobs:
           base64 -d /tmp/evoworld.b64 > /tmp/evoworld.zip
           mkdir -p evoworld-project
           unzip -q /tmp/evoworld.zip -d evoworld-project
-          ls -la evoworld-project
 
-      - name: Inject CI stress mode
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path("evoworld-project/main.gd")
-          s=p.read_text(encoding="utf-8")
-          s=s.replace("var next_resource_update = 0.0\n", "var next_resource_update = 0.0\nvar ci_stress = false\nvar ci_stress_target = 0.0\n")
-          s=s.replace("    _setup_menu()\n    _show_menu()\n", """    _setup_menu()
-    _show_menu()
-    if "--ci-stress" in OS.get_cmdline_user_args():
-        ci_stress = true
-        ci_stress_target = YEAR_SECONDS * 40.0
-        _start_world(12345)
-        _set_speed(100.0)
-        print("CI_STRESS_START population=", agents.size(), " target_years=40")
-""")
-          s=s.replace("    _refresh_ui()\n\nfunc _simulate_step(dt: float) -> void:\n", """    _refresh_ui()
-    if ci_stress and sim_time >= ci_stress_target:
-        print("CI_STRESS_RESULT years=", sim_time / YEAR_SECONDS, " population=", agents.size(), " births=", births, " deaths=", deaths, " generation=", max_generation, " discoveries=", global_discoveries.size(), " cultures=", cultures.size(), " conflicts=", conflicts)
-        if agents.is_empty() or births <= 0 or max_generation < 2:
-            push_error("CI stress failed: simulation did not sustain and reproduce")
-            get_tree().quit(2)
-        else:
-            get_tree().quit(0)
-
-func _simulate_step(dt: float) -> void:
-""")
-          p.write_text(s,encoding="utf-8")
-          PY
+      - name: Inject stress mode
+        run: python3 evoworld-ci/stress_patch.py evoworld-project/main.gd
 
       - name: Pull Godot Android CI image
         run: docker pull barichello/godot-ci:4.7.2
 
       - name: Headless validation
         run: |
-          docker run --rm             -v "$PWD/evoworld-project:/project"             -w /project             barichello/godot-ci:4.7.2             godot --headless --path /project --quit-after 30
+          docker run --rm \
+            -v "$PWD/evoworld-project:/project" \
+            -w /project \
+            barichello/godot-ci:4.7.2 \
+            godot --headless --path /project --quit-after 30
 
       - name: 100x simulation stress test
         run: |
@@ -72,13 +47,20 @@ func _simulate_step(dt: float) -> void:
       - name: Build Android APK
         run: |
           mkdir -p evoworld-project/build
-          docker run --rm             -v "$PWD/evoworld-project:/project"             -w /project             barichello/godot-ci:4.7.2             godot --headless --path /project --export-debug Android /project/build/EvoWorld.apk
+          docker run --rm \
+            -v "$PWD/evoworld-project:/project" \
+            -w /project \
+            barichello/godot-ci:4.7.2 \
+            godot --headless --path /project --export-debug Android /project/build/EvoWorld.apk
           test -s evoworld-project/build/EvoWorld.apk
           sha256sum evoworld-project/build/EvoWorld.apk
 
       - name: Verify Android package
         run: |
-          docker run --rm             -v "$PWD/evoworld-project:/project"             barichello/godot-ci:4.7.2             sh -lc '/usr/lib/android-sdk/build-tools/33.0.2/aapt dump badging /project/build/EvoWorld.apk | grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^native-code:"'
+          docker run --rm \
+            -v "$PWD/evoworld-project:/project" \
+            barichello/godot-ci:4.7.2 \
+            sh -lc '/usr/lib/android-sdk/build-tools/33.0.2/aapt dump badging /project/build/EvoWorld.apk | grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^native-code:"'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
