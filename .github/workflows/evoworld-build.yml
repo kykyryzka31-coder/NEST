@@ -17,9 +17,10 @@ jobs:
       - name: Restore EvoWorld 1.3 project
         shell: bash
         run: |
-          cat evoworld-ci/project130.b64.01 evoworld-ci/project130.rem.01 evoworld-ci/project130.rem.02 evoworld-ci/project130.rem.03 evoworld-ci/project130.rem.04 evoworld-ci/project130.rem.05 > /tmp/evoworld130.b64
+          cat evoworld-ci/project130.start.01 evoworld-ci/project130.start.02 evoworld-ci/project130.start.03 evoworld-ci/project130.rem.01 evoworld-ci/project130.rem.02 evoworld-ci/project130.rem.03 evoworld-ci/project130.rem.04 evoworld-ci/project130.rem.05 > /tmp/evoworld130.b64
           test "$(wc -c < /tmp/evoworld130.b64)" -eq 28824
           base64 -d /tmp/evoworld130.b64 > /tmp/evoworld130.zip
+          echo "a0939df4111b2703e5706d6c75dc531fe2e3a7a531fb7bbbb59f5ebd6e869374  /tmp/evoworld130.zip" | sha256sum -c -
           mkdir -p evoworld-project
           unzip -q /tmp/evoworld130.zip -d evoworld-project
           grep -q 'config/version="1.3.0"' evoworld-project/project.godot
