@@ -39,11 +39,11 @@ s = s.replace(
         var remaining: float = delta * speed
         var max_step: float = 0.15
         if speed >= 50.0:
-            max_step = 0.45
+            max_step = 1.0
         elif speed >= 20.0:
-            max_step = 0.32
+            max_step = 0.55
         elif speed >= 5.0:
-            max_step = 0.22
+            max_step = 0.30
         while remaining > 0.00001:
             var step: float = minf(max_step, remaining)
             sim_time += step
@@ -117,7 +117,18 @@ p.write_text(s, encoding="utf-8")
 # Final Android build version.
 project = root / "project.godot"
 ps = project.read_text(encoding="utf-8").replace('config/version="1.1.0"', 'config/version="1.1.1"')
+if 'config/icon=' not in ps:
+    ps = ps.replace('config/version="1.1.1"\n', 'config/version="1.1.1"\nconfig/icon="res://icon.svg"\n')
 project.write_text(ps, encoding="utf-8")
+
+(root / "icon.svg").write_text("""<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="104" fill="#0b1518"/>
+<circle cx="256" cy="262" r="174" fill="#255d46"/>
+<path d="M120 292C170 184 232 142 292 160c40 12 76 48 100 99-44-18-83-14-116 11 49 4 85 27 112 69-55-24-107-29-153-13-43 15-82 3-115-34z" fill="#8fd3a9"/>
+<path d="M231 297l35-87 35 87-35 61z" fill="#f19b4b"/>
+<circle cx="266" cy="200" r="18" fill="#ffd166"/>
+</svg>
+""", encoding="utf-8")
 
 preset = root / "export_presets.cfg"
 es = preset.read_text(encoding="utf-8").replace("version/code=3", "version/code=4").replace('version/name="1.1.0"', 'version/name="1.1.1"')
