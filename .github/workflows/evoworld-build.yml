@@ -30,19 +30,29 @@ jobs:
 
       - name: Headless validation
         run: |
+          set -o pipefail
           docker run --rm \
             -v "$PWD/evoworld-project:/project" \
             -w /project \
             barichello/godot-ci:4.7.2 \
-            godot --headless --path /project --quit-after 30
+            godot --headless --path /project --quit-after 30 2>&1 | tee /tmp/godot-validate.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script" /tmp/godot-validate.log; then
+            echo "Godot script validation failed"
+            exit 1
+          fi
 
       - name: 100x simulation stress test
         run: |
+          set -o pipefail
           timeout --kill-after=10s 180s docker run --rm \
             -v "$PWD/evoworld-project:/project" \
             -w /project \
             barichello/godot-ci:4.7.2 \
-            godot --headless --path /project --fixed-fps 60 -- --ci-stress
+            godot --headless --path /project --fixed-fps 60 -- --ci-stress 2>&1 | tee /tmp/godot-stress.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|CI stress failed|CI save/load failed" /tmp/godot-stress.log; then
+            echo "Godot stress validation failed"
+            exit 1
+          fi
 
       - name: Build Android APK
         run: |
